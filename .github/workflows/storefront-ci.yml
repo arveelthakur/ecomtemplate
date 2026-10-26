@@ -1,0 +1,31 @@
+name: Storefront checks
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:unit
+      - run: pnpm run test:security
+      - run: pnpm run test:seo-prerender
+      - run: pnpm --filter @workspace/pakistani-storefront run typecheck
+      - run: pnpm --filter @workspace/pakistani-storefront run build
+        env:
+          PORT: 5173
+          BASE_PATH: /
+          PUBLIC_SITE_URL: https://store.example
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector
+      - run: supabase test db

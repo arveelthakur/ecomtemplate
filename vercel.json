@@ -1,0 +1,26 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "PORT=5173 BASE_PATH=/ pnpm --filter @workspace/pakistani-storefront run build",
+  "outputDirectory": "artifacts/pakistani-storefront/dist/public",
+  "framework": null,
+  "crons": [
+    {
+      "path": "/api/store/sendAbandonedCheckoutEmails",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/store/sendAbandonedCheckoutWhatsApp",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/store/sendWhatsAppReviewRequests",
+      "schedule": "0 5 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

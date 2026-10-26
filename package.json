@@ -1,0 +1,23 @@
+{
+  "name": "supabase-vercel-storefront-template",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.26.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm --filter @workspace/pakistani-storefront run build",
+    "test:unit": "node --test functions/*.test.cjs artifacts/pakistani-storefront/tests/*.test.mjs",
+    "test:seo-prerender": "pnpm --filter @workspace/pakistani-storefront run test:seo-prerender",
+    "test:security": "node --test tests/security/*.test.mjs"
+  },
+  "dependencies": {
+    "nodemailer": "^10.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "^5.9.3"
+  }
+}

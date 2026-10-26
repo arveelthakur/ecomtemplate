@@ -1,0 +1,65 @@
+name: Storefront checks
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:unit
+      - run: pnpm run test:security
+      - run: pnpm run test:seo-prerender
+      - run: pnpm --filter @workspace/pakistani-storefront run typecheck
+      - run: pnpm --filter @workspace/pakistani-storefront run build
+        env:
+          PORT: 5173
+          BASE_PATH: /
+          PUBLIC_SITE_URL: https://store.example
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector
+      - run: supabase test db
+  browser:
+    name: Mobile storefront and checkout audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run isolated Chromium UI checks
+        shell: bash
+        run: |
+          mkdir -p nura-audit-evidence
+          PORT=5000 pnpm --filter @workspace/pakistani-storefront dev > nura-audit-evidence/vite.log 2>&1 &
+          VITE_PID=$!
+          CHROME=$(command -v google-chrome || command -v chromium)
+          "$CHROME" --headless --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-background-networking --remote-debugging-port=9222 --user-data-dir="$RUNNER_TEMP/nura-browser" about:blank > nura-audit-evidence/chromium.log 2>&1 &
+          CHROME_PID=$!
+          trap 'kill "$VITE_PID" "$CHROME_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5000/tests/browser/fixture.html >/dev/null && curl -fsS http://localhost:9222/json/list >/dev/null; then break; fi
+            sleep 1
+          done
+          timeout 180 node artifacts/pakistani-storefront/tests/browser/audit.mjs | tee nura-audit-evidence/browser-results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nura-mobile-browser-evidence
+          path: nura-audit-evidence
+          retention-days: 14
